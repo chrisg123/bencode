@@ -1,16 +1,16 @@
 module BencodeTests where
 
-import Bencode(bfind, bfindR)
+import Bencode(bfind, bfindPos)
 import Test.HUnit
 
-testBfindREmpty :: Test
-testBfindREmpty = TestCase $ assertEqual "Should return (0,0) for empty string." (0,0) (bfindR "" 0)
+testBfindPosEmpty :: Test
+testBfindPosEmpty = TestCase $ assertEqual "Should return (0,0) for empty string." (0,0) (bfindPos "" 0)
 
 testBfindEmpty :: Test
 testBfindEmpty = TestCase $ assertEqual "Should return empty string given an empty string." "" (bfind "")
 
-testBfindRNoMatch :: Test
-testBfindRNoMatch =
+testBfindPosNoMatch :: Test
+testBfindPosNoMatch =
   TestCase $
   assertEqual
     "Should return empty string for no match in string."
@@ -25,13 +25,13 @@ testBfindNoMatch =
     ""
     (bfind "asdf")
 
-testBfindRFuzzyMatch :: Test
-testBfindRFuzzyMatch =
+testBfindPosFuzzyMatch :: Test
+testBfindPosFuzzyMatch =
   TestCase $
   assertEqual
     "Should find bencoded string within a malformed bencoded string."
     (4, 7)
-    (bfindR "asdf5:hello" 0)
+    (bfindPos "asdf5:hello" 0)
 
 testBfindFuzzyMatch :: Test
 testBfindFuzzyMatch =
@@ -41,13 +41,13 @@ testBfindFuzzyMatch =
     "5:hello"
     (bfind "asdf5:hello")
 
-testBfindRNoColon :: Test
-testBfindRNoColon =
+testBfindPosNoColon :: Test
+testBfindPosNoColon =
   TestCase $
   assertEqual
     "Should skip forward if number not followed by colon."
     (10, 8)
-    (bfindR "asdf5Hello6:World!" 0)
+    (bfindPos "asdf5Hello6:World!" 0)
 
 testBfindNoColon :: Test
 testBfindNoColon =
@@ -57,13 +57,13 @@ testBfindNoColon =
     "6:World!"
     (bfind "asdf5Hello6:World!")    
 
-testBfindRFirstWord :: Test
-testBfindRFirstWord =
+testBfindPosFirstWord :: Test
+testBfindPosFirstWord =
   TestCase $
   assertEqual
     "Should only find the first word encountered."
     (0, 7)
-    (bfindR "5:Hello6:World!" 0)
+    (bfindPos "5:Hello6:World!" 0)
 
 testBfindFirstWord :: Test
 testBfindFirstWord =
@@ -73,13 +73,28 @@ testBfindFirstWord =
     "5:Hello"
     (bfind "5:Hello6:World!")
 
-testBfindR :: Test
-testBfindR = TestLabel "Test bfindR." (  TestList
-    [ testBfindREmpty
-    , testBfindRNoMatch
-    , testBfindRFuzzyMatch
-    , testBfindRNoColon
-    , testBfindRFirstWord
+testBfindPosInt :: Test
+testBfindPosInt =
+  TestCase $
+  assertEqual "Should find bencoded integer position." (0, 5) (bfindPos "i123e" 0)
+
+testBfindPosFuzzyMatchInt :: Test
+testBfindPosFuzzyMatchInt =
+  TestCase $
+  assertEqual
+    "Should find bencoded integer position in malformed bencoded string."
+    (4, 5)
+    (bfindPos "asdfi123e" 0)
+
+testBfindPos :: Test
+testBfindPos = TestLabel "Test bfindPos." (  TestList
+    [ testBfindPosEmpty
+    , testBfindPosNoMatch
+    , testBfindPosFuzzyMatch
+    , testBfindPosNoColon
+    , testBfindPosFirstWord
+    , testBfindPosInt
+    , testBfindPosFuzzyMatchInt
     ] )
 
 testBfind :: Test
@@ -92,4 +107,4 @@ testBfind = TestLabel "Test bfind." (   TestList
     ] )
 
 main :: IO Counts
-main = runTestTT $ TestList [testBfindR, testBfind]
+main = runTestTT $ TestList [testBfindPos, testBfind]
