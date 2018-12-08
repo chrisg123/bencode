@@ -1,6 +1,6 @@
 module BencodeTests where
 
-import Bencode(bfind, bfindPos)
+import Bencode(bfind, bfindPos, takeBs)
 import Test.HUnit
 
 testBfindPosEmpty :: Test
@@ -13,9 +13,9 @@ testBfindPosNoMatch :: Test
 testBfindPosNoMatch =
   TestCase $
   assertEqual
-    "Should return empty string for no match in string."
-    ""
-    (bfind "asdf")
+    "Should return (lastIndex str,0) for no match in string."
+    (3,0)
+    (bfindPos "asdf" 0)
 
 testBfindNoMatch :: Test
 testBfindNoMatch =
@@ -86,6 +86,56 @@ testBfindPosFuzzyMatchInt =
     (4, 5)
     (bfindPos "asdfi123e" 0)
 
+testBfindPosOutOfBound :: Test
+testBfindPosOutOfBound =
+  TestCase $
+  assertEqual
+    "Should return (lastIndex str, 0) when i >= length str."
+    (14,0)
+    (bfindPos "5:Hello6:World!" 15)
+  
+testBfindPosStartPos :: Test
+testBfindPosStartPos =
+  TestCase $
+  assertEqual
+    "Should start search at i."
+    (7,8)
+    (bfindPos "5:Hello6:World!" 1)
+
+testBfindPosInvalidList :: Test
+testBfindPosInvalidList =
+  TestCase $
+  assertEqual
+    "Should return (lastIndex,0) for invalid list."
+    (3,0)
+    (bfindPos "lfda" 0)
+
+testTakeBsTwo :: Test
+testTakeBsTwo =
+  TestCase $
+  assertEqual
+    "Should take two consecutive b encoded elements."
+    ["5:Hello","6:World!"]
+    (takeBs "5:Hello6:World!")
+
+testBfindPosListOfTwo :: Test
+testBfindPosListOfTwo =
+  TestCase $
+  assertEqual
+    "Should return the position of a bencoded list of two elements."
+    (0,17)
+    (bfindPos "l5:Hello6:World!e" 0)
+
+testBfindPosDict :: Test
+testBfindPosDict =
+  TestCase $
+  assertEqual
+    "Should return the position of a bencoded dictionary."
+    (0,24)
+    (bfindPos "d3:cow3:moo4:spam4:eggse" 0)
+
+    
+
 testBfindPos :: Test
 testBfindPos = TestLabel "Test bfindPos." (  TestList
     [ testBfindPosEmpty
@@ -95,6 +145,11 @@ testBfindPos = TestLabel "Test bfindPos." (  TestList
     , testBfindPosFirstWord
     , testBfindPosInt
     , testBfindPosFuzzyMatchInt
+    , testBfindPosInvalidList
+    , testBfindPosStartPos
+    , testBfindPosOutOfBound
+    , testBfindPosListOfTwo
+    , testBfindPosDict
     ] )
 
 testBfind :: Test
@@ -107,4 +162,4 @@ testBfind = TestLabel "Test bfind." (   TestList
     ] )
 
 main :: IO Counts
-main = runTestTT $ TestList [testBfindPos, testBfind]
+main = runTestTT $ TestList [testTakeBsTwo, testBfindPos, testBfind]
