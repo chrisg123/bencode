@@ -1,5 +1,18 @@
- module Bencode where
-                
+module Bencode where
+
+data BType
+  = BTypeStr
+  | BTypeInt
+  | BTypeList
+  | BTypeDict
+  deriving (Eq, Show)
+
+data BValue
+  = BStr String
+  | BInt Int
+  | BList [BValue]
+  | BDict [(String, BValue)]
+
 isDigit :: Char -> Bool
 isDigit x = x `elem` ['0' .. '9']
 
@@ -8,7 +21,26 @@ takeDigits = takeWhile isDigit
 
 lastIndex :: Foldable t => t a-> Int
 lastIndex x = length x - 1
- 
+
+getBType :: String -> Maybe BType
+getBType "" = Nothing
+getBType (x:xs)
+  | takeB (x : xs) == "" = Nothing
+  | otherwise =
+    let f 'i' = BTypeInt
+        f 'l' = BTypeList
+        f 'd' = BTypeDict
+        f _ = BTypeStr
+     in Just (f x)
+
+getBValue :: String -> Maybe BValue
+getBValue "" = Nothing
+getBValue (x:xs) =
+  let b = takeB (x : xs)
+   in if b == ""
+        then Nothing
+        else Just (BStr b)
+      
 -- |Find the first accurance of a bencoded element in a string.
 bfind :: String -> String
 bfind s =
@@ -34,6 +66,32 @@ takeB (x:xs)
   | x == 'i' = takeBint (x : xs)
   | x == 'l' || x == 'd' = takeBCollection (x : xs)
   | otherwise = ""
+
+takeB2 :: String -> Maybe (BType, String)
+takeB2 "" = Nothing
+takeB2 (x:xs)
+  | isDigit x =
+    let v = takeBstr (x : xs)
+     in if v == ""
+          then Nothing
+          else Just (BTypeStr, v)
+  | x == 'i' =
+    let v = takeBint (x : xs)
+     in if v == ""
+          then Nothing
+          else Just (BTypeInt, v)
+  | x == 'l' =
+    let v = takeBCollection (x : xs)
+     in if v == ""
+          then Nothing
+          else Just (BTypeList, v)
+  | x == 'd' =
+    let v = takeBCollection (x : xs)
+     in if v == ""
+          then Nothing
+          else Just (BTypeDict, v)
+  | otherwise = Nothing
+
 
 -- |Take all consecutive bencoded elements from the head of a string.
 takeBs :: String -> [String]

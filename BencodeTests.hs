@@ -1,6 +1,6 @@
 module BencodeTests where
 
-import Bencode(bfind, bfindPos, takeBs)
+import Bencode
 import Test.HUnit
 
 testBfindPosEmpty :: Test
@@ -134,7 +134,44 @@ testBfindPosDict =
     (0,24)
     (bfindPos "d3:cow3:moo4:spam4:eggse" 0)
 
-    
+
+testGetBTypeNothing :: Test
+testGetBTypeNothing =
+  TestCase $
+  assertEqual "Should return Nothing" Nothing (getBType "asdf")
+
+testGetBTypeStr :: Test
+testGetBTypeStr =
+  TestCase $
+  assertEqual "Should return BTypeStr" (Just BTypeStr) (getBType "5:hello")
+
+testGetBTypeInt :: Test
+testGetBTypeInt =
+  TestCase $
+  assertEqual "Should return BTypeInt" (Just BTypeInt) (getBType "i123e")
+
+testGetBTypeList :: Test
+testGetBTypeList =
+  TestCase $
+  assertEqual "Should return BTypeList" (Just BTypeList) (getBType "li123e5:helloe")
+
+testGetBTypeDict :: Test
+testGetBTypeDict =
+  TestCase $
+  assertEqual "Should return BTypeDict" (Just BTypeDict) (getBType "di123e5:helloe")
+
+
+testGetBType :: Test
+testGetBType =
+  TestLabel
+    "Test getBType"
+    (TestList
+       [ testGetBTypeStr
+       , testGetBTypeInt
+       , testGetBTypeList
+       , testGetBTypeDict
+       , testGetBTypeNothing
+       ])
 
 testBfindPos :: Test
 testBfindPos = TestLabel "Test bfindPos." (  TestList
@@ -162,4 +199,4 @@ testBfind = TestLabel "Test bfind." (   TestList
     ] )
 
 main :: IO Counts
-main = runTestTT $ TestList [testTakeBsTwo, testBfindPos, testBfind]
+main = runTestTT $ TestList [testTakeBsTwo, testBfindPos, testBfind, testGetBType]
