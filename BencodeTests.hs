@@ -160,6 +160,13 @@ testGetBTypeDict =
   TestCase $
   assertEqual "Should return BTypeDict" (Just BTypeDict) (getBType "di123e5:helloe")
 
+testDecStr :: Test
+testDecStr =
+  TestCase $
+  assertEqual
+    "Should return a haskell String"
+    (Just "hello")
+    (decStr "5:hello")
 
 testGetBType :: Test
 testGetBType =
@@ -199,4 +206,4 @@ testBfind = TestLabel "Test bfind." (   TestList
     ] )
 
 main :: IO Counts
-main = runTestTT $ TestList [testTakeBsTwo, testBfindPos, testBfind, testGetBType]
+main = runTestTT $ TestList [testTakeBsTwo, testBfindPos, testBfind, testGetBType, testDecStr]

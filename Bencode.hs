@@ -5,6 +5,7 @@ data BType
   | BTypeInt
   | BTypeList
   | BTypeDict
+  | BTypeInvalid
   deriving (Eq, Show)
 
 data BValue
@@ -24,14 +25,10 @@ lastIndex x = length x - 1
 
 getBType :: String -> Maybe BType
 getBType "" = Nothing
-getBType (x:xs)
-  | takeB (x : xs) == "" = Nothing
-  | otherwise =
-    let f 'i' = BTypeInt
-        f 'l' = BTypeList
-        f 'd' = BTypeDict
-        f _ = BTypeStr
-     in Just (f x)
+getBType x =
+  case takeTaggedB x of
+    Just (t, _) -> Just t
+    _ -> Nothing
 
 getBValue :: String -> Maybe BValue
 getBValue "" = Nothing
@@ -61,37 +58,22 @@ bfindPos s i
 -- |Take a bencoded element from the head of a string.
 takeB :: String -> String
 takeB "" = ""
-takeB (x:xs)
-  | isDigit x = takeBstr (x : xs)
-  | x == 'i' = takeBint (x : xs)
-  | x == 'l' || x == 'd' = takeBCollection (x : xs)
-  | otherwise = ""
+takeB x =
+  let f (Just (_, s)) = s
+      f _ = ""
+       in f $ takeTaggedB x
 
-takeB2 :: String -> Maybe (BType, String)
-takeB2 "" = Nothing
-takeB2 (x:xs)
-  | isDigit x =
-    let v = takeBstr (x : xs)
-     in if v == ""
-          then Nothing
-          else Just (BTypeStr, v)
-  | x == 'i' =
-    let v = takeBint (x : xs)
-     in if v == ""
-          then Nothing
-          else Just (BTypeInt, v)
-  | x == 'l' =
-    let v = takeBCollection (x : xs)
-     in if v == ""
-          then Nothing
-          else Just (BTypeList, v)
-  | x == 'd' =
-    let v = takeBCollection (x : xs)
-     in if v == ""
-          then Nothing
-          else Just (BTypeDict, v)
+-- |Take a bencoded element from the head of a string and tag it with its type 
+takeTaggedB :: String -> Maybe (BType, String)
+takeTaggedB "" = Nothing;
+takeTaggedB (x:xs)
+  | isDigit x = Just $ f (BTypeStr, maybe "" encStr . decStr)
+  | x == 'i' = Just $ f (BTypeInt, maybe "" encInt . decInt)
+  | x == 'l' = Just $ f (BTypeList, takeBCollection)
+  | x == 'd' = Just $ f (BTypeDict, takeBCollection)
   | otherwise = Nothing
-
+  where
+    f (p, q) = (p, q (x : xs))
 
 -- |Take all consecutive bencoded elements from the head of a string.
 takeBs :: String -> [String]
@@ -101,33 +83,6 @@ takeBs s =
    in if b == ""
         then []
         else b : takeBs (drop (length b) s)
-
--- |Take a bencoded string element from the head of a string.
-takeBstr :: String -> String
-takeBstr "" = ""
-takeBstr (x:xs)
-  | isDigit x =
-    let metaString = takeDigits (x : xs)
-        metaLength = length metaString
-        dataLength = read metaString :: Int
-        validSuffix = (x : xs) !! metaLength == ':'
-     in if validSuffix
-          then take (metaLength + length ":" + dataLength) (x : xs)
-          else ""
-  | otherwise = ""
-
--- |Take a bencoded integer element from the head of a string.
-takeBint :: String -> String
-takeBint "" = ""
-takeBint (x:xs)
-  | x == 'i' =
-    let dataString = takeDigits xs
-        dataLength = length dataString
-        validSuffix = (x : xs) !! (1 + dataLength) == 'e'
-     in if validSuffix
-          then take (dataLength + length (x : "e")) (x : xs)
-          else ""
-  | otherwise = ""
 
 -- |Take a bencoded list or dictionary element from the head of a string.
 takeBCollection :: String -> String
@@ -141,3 +96,37 @@ takeBCollection (x:xs)
           then take (bsLength + length (x : "e")) (x : xs)
           else ""
   | otherwise = "" 
+
+
+encInt :: Int -> String
+encInt x = "i" ++ show x ++ "e"
+
+decInt :: String -> Maybe Int
+decInt "" = Nothing
+decInt (x:xs)
+  | x == 'i' =
+    let dataString = takeDigits xs
+        validSuffix = (x : xs) !! (1 + length dataString) == 'e'
+     in if validSuffix
+          then Just $ read dataString
+          else Nothing
+  | otherwise  = Nothing
+           
+encStr :: String -> String
+encStr x = show (length x) ++ ":" ++ x
+
+decStr :: String -> Maybe String
+decStr "" = Nothing
+decStr (x:xs)
+  | isDigit x =
+    let metaString = takeDigits (x : xs)
+        metaLength = length metaString
+        dataLength = read metaString :: Int
+        validSuffix = (x : xs) !! metaLength == ':'
+     in if validSuffix
+          then Just $ take dataLength (drop (metaLength + 1) (x:xs))
+          else Nothing
+  | otherwise = Nothing
+
+
+-- decIntOrStr :: String -> Either Int String
