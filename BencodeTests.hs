@@ -66,19 +66,6 @@ testDecodeStr =
     (Just "hello")
     (decodeStr "5:hello")
 
-testDecodeIntOrStr1 :: Test
-testDecodeIntOrStr1 =
-    TestCase $
-  assertEqual
-    "Should return a Just String"
-    (Just $ BStr "hello")
-    (decodeIntOrStr "5:hello")
-
-testDecodeIntOrStr2 :: Test
-testDecodeIntOrStr2 =
-  TestCase $
-  assertEqual "Should return a Just Int" (Just $ BInt 3) (decodeIntOrStr "i3e")
-
 testDecodeSeqIntOrStr :: Test
 testDecodeSeqIntOrStr =
   TestCase $
@@ -151,6 +138,14 @@ testDecodeDct5 =
     (Just (Data.Map.fromList [("key", BDct (Data.Map.fromList [("hello", BStr "world!")]))]))
     (decodeDct "d3:keyd5:hello6:world!ee")
 
+testDecodeDct6 :: Test
+testDecodeDct6 =
+  TestCase $
+  assertEqual
+    "Sould return nested Data.Map.fromList with nested list"
+    (Just (Data.Map.fromList [("key", BDct (Data.Map.fromList [("hello", BLst [BStr "world!", BInt 123])]))]))
+    (decodeDct "d3:keyd5:hellol6:world!i123eeee")
+
 testEncodeDct :: Test
 testEncodeDct =
   TestCase $
@@ -169,6 +164,7 @@ testDecodeDct =
        , testDecodeDct3
        , testDecodeDct4
        , testDecodeDct5
+       , testDecodeDct6
        ])
 
 testDecode :: Test
@@ -186,8 +182,6 @@ testDecode = TestLabel "Test decode." (   TestList
     , testDecodeInvalidInt9
     , testDecodeInvalidInt10    
     , testDecodeStr
-    , testDecodeIntOrStr1
-    , testDecodeIntOrStr2
     , testDecodeSeqIntOrStr
     , testDecodeLst
     , testDecodeDct

@@ -40,23 +40,19 @@ decodeStr (x:xs)
           then Just $ take dataLength (drop (metaLength + 1) (x:xs))
           else Nothing
 
-decodeIntOrStr :: String -> Maybe BValue
-decodeIntOrStr x =
-  case decodeInt x of
-    Just y -> return $ BInt y
-    _ -> decodeStr x >>= \y -> return $ BStr y
-
-decodeLstOrDct :: String -> Maybe BValue
-decodeLstOrDct x =
-  case decodeLst x of
-    Just y -> return $ BLst y
-    _ -> decodeDct x >>= \y -> return $ BDct y
-
 decodeAny :: String -> Maybe BValue
-decodeAny x =
-  case decodeIntOrStr x of
-    Just y -> return y
-    _ -> decodeLstOrDct x >>= \y -> return y
+decodeAny x = g 0
+  where
+    f 0 = decodeInt x >>= \w -> return $ BInt w
+    f 1 = decodeStr x >>= \w -> return $ BStr w
+    f 2 = decodeLst x >>= \w -> return $ BLst w
+    f 3 = decodeDct x >>= \w -> return $ BDct w
+    f _ = Nothing
+    g :: Int -> Maybe BValue
+    g n =
+      case f n of
+        Just y -> return y
+        Nothing -> g (n + 1)
 
 decodeSeq :: String -> [BValue] -> Maybe [BValue]
 decodeSeq "" xs  = return $ reverse xs
@@ -69,7 +65,7 @@ decodeSeq x xs =
     Just (BLst p) -> decodeSeq (drop (length $ encodeLst p) x) (BLst p : xs)
     Just (BDct p) -> decodeSeq (drop (length $ encodeDct p) x) (BDct p : xs)
     _ -> Nothing
-    
+
 decodeLst :: String -> Maybe [BValue]
 decodeLst "" = Nothing
 decodeLst (x:xs)
@@ -97,6 +93,7 @@ decodeDct (x:xs)
 encodeDct ::  Map String BValue -> String
 encodeDct d = 'd' : encodeCol (Right (toList d)) "" ++ "e"
 
+-- |Encode a collection of BValues. (i.e. Either list or dictionary)
 encodeCol :: Either [BValue] [(String, BValue)] -> String -> String
 encodeCol (Left []) s = s
 encodeCol (Right []) s = s
