@@ -9,8 +9,27 @@ data BValue
   | BDct (Map String BValue)
   deriving (Eq, Show, Ord)
 
-encodeInt :: Int -> String
-encodeInt x = "i" ++ show x ++ "e"
+encode :: BValue -> String
+encode x =
+  case x of
+    BInt b -> "i" ++ show b ++ "e"
+    BStr b -> show (length b) ++ ":" ++ b
+    BLst b -> 'l' : encodeCol (Left b) "" ++ "e"
+    BDct b -> 'd' : encodeCol (Right (toList b)) "" ++ "e"
+
+decode :: String -> Maybe BValue
+decode x = g 0
+  where
+    f 0 = decodeInt x >>= \w -> return $ BInt w
+    f 1 = decodeStr x >>= \w -> return $ BStr w
+    f 2 = decodeLst x >>= \w -> return $ BLst w
+    f 3 = decodeDct x >>= \w -> return $ BDct w
+    f _ = Nothing
+    g :: Int -> Maybe BValue
+    g n =
+      case f n of
+        Just y -> return y
+        Nothing -> g (n + 1)
 
 decodeInt :: String -> Maybe Int
 decodeInt (x0:x1:x2:xs)
@@ -23,9 +42,6 @@ decodeInt (x0:x1:x2:xs)
           then return (read d :: Int)
           else Nothing
 decodeInt _ = Nothing
-
-encodeStr :: String -> String
-encodeStr x = show (length x) ++ ":" ++ x
 
 decodeStr :: String -> Maybe String
 decodeStr "" = Nothing
@@ -40,40 +56,19 @@ decodeStr (x:xs)
           then Just $ take dataLength (drop (metaLength + 1) (x:xs))
           else Nothing
 
-decodeAny :: String -> Maybe BValue
-decodeAny x = g 0
-  where
-    f 0 = decodeInt x >>= \w -> return $ BInt w
-    f 1 = decodeStr x >>= \w -> return $ BStr w
-    f 2 = decodeLst x >>= \w -> return $ BLst w
-    f 3 = decodeDct x >>= \w -> return $ BDct w
-    f _ = Nothing
-    g :: Int -> Maybe BValue
-    g n =
-      case f n of
-        Just y -> return y
-        Nothing -> g (n + 1)
-
 decodeSeq :: String -> [BValue] -> Maybe [BValue]
-decodeSeq "" xs  = return $ reverse xs
-decodeSeq x xs =
-  case decodeAny x of
-    Just (BInt p) ->
-      decodeSeq (drop (length $ encodeInt p) x) (BInt p : xs)
-    Just (BStr p) ->
-      decodeSeq (drop (length $ encodeStr p) x) (BStr p : xs)
-    Just (BLst p) -> decodeSeq (drop (length $ encodeLst p) x) (BLst p : xs)
-    Just (BDct p) -> decodeSeq (drop (length $ encodeDct p) x) (BDct p : xs)
-    _ -> Nothing
+decodeSeq "" bs  = return $ reverse bs
+decodeSeq x bs =
+  let f = decode x >>= \y -> return (y, encode y)
+      g (_, "") = Nothing
+      g (decoded, encoded) = decodeSeq (drop (length encoded) x) (decoded : bs)
+   in f >>= g
 
 decodeLst :: String -> Maybe [BValue]
 decodeLst "" = Nothing
 decodeLst (x:xs)
   | x /= 'l' || last xs /= 'e' = Nothing
   | otherwise = decodeSeq (take (length xs - 1) xs) []
-
-encodeLst :: [BValue] -> String
-encodeLst bs = 'l' : encodeCol (Left bs) "" ++ "e"
 
 decodeDct :: String -> Maybe (Map String BValue)
 decodeDct "" = Nothing
@@ -85,13 +80,9 @@ decodeDct (x:xs)
           f (BInt b0:b1:bs) = (show b0, b1) : f bs
           f _ = []
           keyValPairs = f y
-          complete = 2 * length keyValPairs == length y
-       in if complete
+       in if 2 * length keyValPairs == length y
             then Just $ M.fromList keyValPairs
             else Nothing
-
-encodeDct ::  Map String BValue -> String
-encodeDct d = 'd' : encodeCol (Right (toList d)) "" ++ "e"
 
 -- |Encode a collection of BValues. (i.e. Either list or dictionary)
 encodeCol :: Either [BValue] [(String, BValue)] -> String -> String
@@ -103,8 +94,4 @@ encodeCol x s =
           (\(w:ws) -> ("", w, Left ws))
           (\((p, q):ws) -> (show (length p) ++ ":" ++ p, q, Right ws))
           x
-   in case val of
-        BInt b -> encodeCol xs (s ++ key ++ encodeInt b)
-        BStr b -> encodeCol xs (s ++ key ++ encodeStr b)
-        BLst b -> encodeCol xs (s ++ key ++ encodeLst b)
-        BDct b -> encodeCol xs (s ++ key ++ encodeDct b)
+   in encodeCol xs (s ++ key ++ encode val)

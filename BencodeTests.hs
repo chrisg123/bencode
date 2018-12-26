@@ -5,8 +5,7 @@ import Test.HUnit
 import Data.Map 
 
 testEncodeInt :: Test
-testEncodeInt =  TestCase $assertEqual "Should return bencoded integer" "i123e" (encodeInt 123
-                                                                                )
+testEncodeInt =  TestCase $assertEqual "Should return bencoded integer" "i123e" (encode (BInt 123))
 testDecodeInt :: Test
 testDecodeInt =
   TestCase $ assertEqual "Should return a Just Int" (Just 3) (decodeInt "i3e")
@@ -56,7 +55,7 @@ testDecodeInvalidInt10 =
   TestCase $ assertEqual "Should return Nothing for invalid bencoded integer" Nothing (decodeInt "i3")  
 
 testEncodeStr :: Test
-testEncodeStr =  TestCase $assertEqual "Should return bencoded integer" "5:hello" (encodeStr "hello")
+testEncodeStr =  TestCase $assertEqual "Should return bencoded integer" "5:hello" (encode (BStr "hello"))
 
 testDecodeStr :: Test
 testDecodeStr =
@@ -96,7 +95,7 @@ testEncodeLst1 =
   assertEqual
     "Should return encoded list."
   "l5:hello6:world!e"
-    (encodeLst [BStr "hello", BStr "world!"])
+    (encode (BLst [BStr "hello", BStr "world!"]))
 
 testEncodeLst2 :: Test
 testEncodeLst2 =
@@ -104,7 +103,7 @@ testEncodeLst2 =
   assertEqual
     "Should return encoded list."
   "l5:hello6:world!li123e3:abcee"
-    (encodeLst [BStr "hello", BStr "world!", BLst [BInt 123, BStr "abc"]])
+    (encode (BLst [BStr "hello", BStr "world!", BLst [BInt 123, BStr "abc"]]))
 
 testDecodeLst :: Test
 testDecodeLst =
@@ -152,7 +151,7 @@ testEncodeDct =
   assertEqual
     "Should return a bencoded dictionary."
     "d4:key16:value14:key26:value2e"
-    (encodeDct (fromList [("key1", BStr "value1"), ("key2", BStr "value2")]))
+    (encode (BDct (fromList [("key1", BStr "value1"), ("key2", BStr "value2")])))
 
 testDecodeDct :: Test
 testDecodeDct =
