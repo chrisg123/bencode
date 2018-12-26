@@ -18,18 +18,18 @@ encode x =
     BDct b -> 'd' : encodeCol (Right (toList b)) "" ++ "e"
 
 decode :: String -> Maybe BValue
-decode x = g 0
+decode x = f' 0
   where
     f 0 = decodeInt x >>= \w -> return $ BInt w
     f 1 = decodeStr x >>= \w -> return $ BStr w
     f 2 = decodeLst x >>= \w -> return $ BLst w
     f 3 = decodeDct x >>= \w -> return $ BDct w
     f _ = Nothing
-    g :: Int -> Maybe BValue
-    g n =
+    f' :: Int -> Maybe BValue
+    f' n =
       case f n of
         Just y -> return y
-        Nothing -> g (n + 1)
+        Nothing -> f' (n + 1)
 
 decodeInt :: String -> Maybe Int
 decodeInt (x0:x1:x2:xs)
